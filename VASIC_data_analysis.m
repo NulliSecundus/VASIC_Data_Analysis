@@ -2,8 +2,8 @@
 clearvars
 
 % Begin Filter Controls
-filter1ON = true; % show duration filter
-filter2ON = true; % show total weight filter
+filter1ON = false; % show duration filter
+filter2ON = false; % show total weight filter
 filter3ON = true; % show minimum weight per footpad filter
 histBins = 60; % controls the number of 'bins' for each histogram
 sizeParameter = 2; % Variable determining minimum data points per epoch
@@ -266,3 +266,13 @@ if filter3ON
     xlabel('L - R')
     ylabel('Counts')
 end
+
+%% Save Figure
+%{
+folderName = filename(1:end-4);
+dirPath = ['Results/' folderName];
+mkdir(dirPath);
+figureName = [folderName '_Figure.fig'];
+savePath = ['Results/' folderName '/' figureName];
+savefig(savePath);
+%}
