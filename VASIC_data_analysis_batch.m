@@ -297,6 +297,9 @@ for index = 1:fileNum
         Y = cell2mat(Y);
         Mean = mean(Y);
         filter2LRDiff{avgTotTimeIndex,replicateIndex} = Mean;
+        filter2LRDiffNorm{avgTotTimeIndex,replicateIndex} = (Mean / weightMetric);
+        filter1LRDiffNorm{avgTotTimeIndex,replicateIndex} = (filter1LRDiff{avgTotTimeIndex,replicateIndex} / weightMetric);
+        rawLRDiffNorm{avgTotTimeIndex,replicateIndex} = (rawLRDiff{avgTotTimeIndex,replicateIndex} / weightMetric);
         Stdev = std(Y);
         
         % Show plot and histogram if desired
@@ -342,6 +345,7 @@ for index = 1:fileNum
         Y = cell2mat(Y);
         Mean = mean(Y);
         filter3LRDiff{avgTotTimeIndex,replicateIndex} = Mean;
+        filter3LRDiffNorm{avgTotTimeIndex,replicateIndex} = (Mean / weightMetric);
         Stdev = std(Y);
         
         % Show plot and histogram if desired
@@ -463,9 +467,54 @@ for n = 2:s
 end
 avg = {};
 
+rawLRDiffNorm{1,end+1} = 'Average';
+s = size(rawLRDiffNorm, 1);
+for n = 2:s
+    index = size(rawLRDiffNorm, 2);
+    for i = 2:index-1
+        avg{1,i-1} = rawLRDiffNorm{n,i};
+    end
+    rawLRDiffNorm{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+filter1LRDiffNorm{1,end+1} = 'Average';
+s = size(filter1LRDiffNorm, 1);
+for n = 2:s
+    index = size(filter1LRDiffNorm, 2);
+    for i = 2:index-1
+        avg{1,i-1} = filter1LRDiffNorm{n,i};
+    end
+    filter1LRDiffNorm{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+filter2LRDiffNorm{1,end+1} = 'Average';
+s = size(filter2LRDiffNorm, 1);
+for n = 2:s
+    index = size(filter2LRDiffNorm, 2);
+    for i = 2:index-1
+        avg{1,i-1} = filter2LRDiffNorm{n,i};
+    end
+    filter2LRDiffNorm{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+filter3LRDiffNorm{1,end+1} = 'Average';
+s = size(filter3LRDiffNorm, 1);
+for n = 2:s
+    index = size(filter3LRDiffNorm, 2);
+    for i = 2:index-1
+        avg{1,i-1} = filter3LRDiffNorm{n,i};
+    end
+    filter3LRDiffNorm{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
 %% Plot and save cumulative stats
 mkdir('Results/Access_Stats');
-mkdir('Results/LR_Differences');
+mkdir('Results/LR_Differences'); 
+mkdir('Results/Normalized_LR_Differences');
 
 %{
 timeFig = figure('position', [300, 50, 500, 400], 'visible', 'off');
@@ -566,6 +615,50 @@ for n = 2:s
     fprintf(fid, 'Day %s,', filter3LRDiff{n,1});
     fprintf(fid, '%f,', filter3LRDiff{n,2:end-1});
     fprintf(fid, '%f\n', filter3LRDiff{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/Normalized_LR_Differences/Normalized_Raw_LR_Difference.csv', 'w');
+fprintf(fid, '%s,', rawLRDiffNorm{1,1:end-1});
+fprintf(fid, '%s\n', rawLRDiffNorm{1,end});
+s = size(rawLRDiffNorm, 1);
+for n = 2:s
+    fprintf(fid, 'Day %s,', rawLRDiffNorm{n,1});
+    fprintf(fid, '%f,', rawLRDiffNorm{n,2:end-1});
+    fprintf(fid, '%f\n', rawLRDiffNorm{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/Normalized_LR_Differences/Normalized_Filter1_LR_Difference.csv', 'w');
+fprintf(fid, '%s,', filter1LRDiffNorm{1,1:end-1});
+fprintf(fid, '%s\n', filter1LRDiffNorm{1,end});
+s = size(filter1LRDiffNorm, 1);
+for n = 2:s
+    fprintf(fid, 'Day %s,', filter1LRDiffNorm{n,1});
+    fprintf(fid, '%f,', filter1LRDiffNorm{n,2:end-1});
+    fprintf(fid, '%f\n', filter1LRDiffNorm{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/Normalized_LR_Differences/Normalized_Filter2_LR_Difference.csv', 'w');
+fprintf(fid, '%s,', filter2LRDiffNorm{1,1:end-1});
+fprintf(fid, '%s\n', filter2LRDiffNorm{1,end});
+s = size(filter2LRDiffNorm, 1);
+for n = 2:s
+    fprintf(fid, 'Day %s,', filter2LRDiffNorm{n,1});
+    fprintf(fid, '%f,', filter2LRDiffNorm{n,2:end-1});
+    fprintf(fid, '%f\n', filter2LRDiffNorm{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/Normalized_LR_Differences/Normalized_Filter3_LR_Difference.csv', 'w');
+fprintf(fid, '%s,', filter3LRDiffNorm{1,1:end-1});
+fprintf(fid, '%s\n', filter3LRDiffNorm{1,end});
+s = size(filter3LRDiffNorm, 1);
+for n = 2:s
+    fprintf(fid, 'Day %s,', filter3LRDiffNorm{n,1});
+    fprintf(fid, '%f,', filter3LRDiffNorm{n,2:end-1});
+    fprintf(fid, '%f\n', filter3LRDiffNorm{n,end});
 end
 fclose(fid);
 
