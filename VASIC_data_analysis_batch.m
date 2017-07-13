@@ -8,7 +8,7 @@ filter3ON = true; % show minimum weight per footpad filter
 histBins = 60; % controls the number of 'bins' for each histogram
 sizeParameter = 2; % Variable determining minimum data points per epoch
 errorRate = 0.2; % error rate, allowed percentage deviation from max weight
-positionError = 0.1; % how much minimum weight required per footpad
+positionError = 0.03; % how much minimum weight required per footpad
 % End Filter Controls
 
 fileListing = dir('*.csv');
@@ -37,6 +37,10 @@ rawLRDiff = cell(1);
 filter1LRDiff = cell(1);
 filter2LRDiff = cell(1);
 filter3LRDiff = cell(1);
+rawLRDiffNorm = cell(1);
+filter1LRDiffNorm = cell(1);
+filter2LRDiffNorm = cell(1);
+filter3LRDiffNorm = cell(1);
 
 %% Main loop - file processing
 for index = 1:fileNum
@@ -92,6 +96,10 @@ for index = 1:fileNum
             filter1LRDiff{1,replicateIndex} = replicateName;
             filter2LRDiff{1,replicateIndex} = replicateName;
             filter3LRDiff{1,replicateIndex} = replicateName;
+            rawLRDiffNorm{1,replicateIndex} = replicateName;
+            filter1LRDiffNorm{1,replicateIndex} = replicateName;
+            filter2LRDiffNorm{1,replicateIndex} = replicateName;
+            filter3LRDiffNorm{1,replicateIndex} = replicateName;
         end
         
         if ~dateFound
@@ -104,6 +112,10 @@ for index = 1:fileNum
             filter1LRDiff{avgTotTimeIndex,1} = date;
             filter2LRDiff{avgTotTimeIndex,1} = date;
             filter3LRDiff{avgTotTimeIndex,1} = date;
+            rawLRDiffNorm{avgTotTimeIndex,1} = date;
+            filter1LRDiffNorm{avgTotTimeIndex,1} = date;
+            filter2LRDiffNorm{avgTotTimeIndex,1} = date;
+            filter3LRDiffNorm{avgTotTimeIndex,1} = date;
         end
         
         parseData = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
