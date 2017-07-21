@@ -1,6 +1,12 @@
 %% Setup and parameters
 clearvars
 
+% Turn on groups
+groupingOn = true;
+% Each group should be separated by semicolon
+% Group indices should be formatted 'Name',StartInt,EndInt;
+groupList = {'SNI',1,3;'Sham',4,6;'SNI',7,9};
+
 % Begin Filter Controls
 filter1ON = true; % show duration filter
 filter2ON = true; % show total weight filter
@@ -29,6 +35,7 @@ replicateIndex = 1;
 errorIndex = 1;
 errorList = strings(1,1);
 
+dateList = {'Date'};
 avgTotTime = cell(1);
 avgTotTimeIndex = 1;
 numAccessArray = cell(1);
@@ -41,6 +48,8 @@ rawLRDiffNorm = cell(1);
 filter1LRDiffNorm = cell(1);
 filter2LRDiffNorm = cell(1);
 filter3LRDiffNorm = cell(1);
+
+groupNum = size(groupList,1);
 
 %% Main loop - file processing
 for index = 1:fileNum
@@ -71,7 +80,6 @@ for index = 1:fileNum
         rawData = readtable(filename, opts);
         
         % Check raw data for previous read
-        
         
         curDate = string(splitFilename{1,1});
         replicateName = string(splitFilename{1,2});
@@ -116,6 +124,7 @@ for index = 1:fileNum
             filter1LRDiffNorm{avgTotTimeIndex,1} = date;
             filter2LRDiffNorm{avgTotTimeIndex,1} = date;
             filter3LRDiffNorm{avgTotTimeIndex,1} = date;
+            dateList{avgTotTimeIndex,1} = date;
         end
         
         parseData = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
@@ -395,7 +404,7 @@ s = size(avgTotTime, 1);
 for n = 2:s
     index = size(avgTotTime, 2);
     for i = 2:index-1
-        avg{1,i-1} = avgTotTime{n,i};
+        avg{1,i-1} = avgTotTime{n,i}; %#ok<*SAGROW>
     end
     avgTotTime{n,end} = mean(cell2mat(avg));
 end
@@ -434,6 +443,24 @@ for n = 2:s
 end
 avg = {};
 
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        rawLRDiff{1,end+1} = groupName;
+        s = size(rawLRDiff, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = rawLRDiff{n,i};
+                index = index + 1;
+            end
+            rawLRDiff{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
 filter1LRDiff{1,end+1} = 'Average';
 s = size(filter1LRDiff, 1);
 for n = 2:s
@@ -444,6 +471,24 @@ for n = 2:s
     filter1LRDiff{n,end} = mean(cell2mat(avg));
 end
 avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter1LRDiff{1,end+1} = groupName;
+        s = size(filter1LRDiff, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter1LRDiff{n,i};
+                index = index + 1;
+            end
+            filter1LRDiff{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
 
 filter2LRDiff{1,end+1} = 'Average';
 s = size(filter2LRDiff, 1);
@@ -456,6 +501,24 @@ for n = 2:s
 end
 avg = {};
 
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter2LRDiff{1,end+1} = groupName;
+        s = size(filter2LRDiff, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter2LRDiff{n,i};
+                index = index + 1;
+            end
+            filter2LRDiff{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
 filter3LRDiff{1,end+1} = 'Average';
 s = size(filter3LRDiff, 1);
 for n = 2:s
@@ -466,6 +529,24 @@ for n = 2:s
     filter3LRDiff{n,end} = mean(cell2mat(avg));
 end
 avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter3LRDiff{1,end+1} = groupName;
+        s = size(filter3LRDiff, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter3LRDiff{n,i};
+                index = index + 1;
+            end
+            filter3LRDiff{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
 
 rawLRDiffNorm{1,end+1} = 'Average';
 s = size(rawLRDiffNorm, 1);
@@ -478,6 +559,24 @@ for n = 2:s
 end
 avg = {};
 
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        rawLRDiffNorm{1,end+1} = groupName;
+        s = size(rawLRDiffNorm, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = rawLRDiffNorm{n,i};
+                index = index + 1;
+            end
+            rawLRDiffNorm{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
 filter1LRDiffNorm{1,end+1} = 'Average';
 s = size(filter1LRDiffNorm, 1);
 for n = 2:s
@@ -488,6 +587,24 @@ for n = 2:s
     filter1LRDiffNorm{n,end} = mean(cell2mat(avg));
 end
 avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter1LRDiffNorm{1,end+1} = groupName;
+        s = size(filter1LRDiffNorm, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter1LRDiffNorm{n,i};
+                index = index + 1;
+            end
+            filter1LRDiffNorm{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
 
 filter2LRDiffNorm{1,end+1} = 'Average';
 s = size(filter2LRDiffNorm, 1);
@@ -500,6 +617,24 @@ for n = 2:s
 end
 avg = {};
 
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter2LRDiffNorm{1,end+1} = groupName;
+        s = size(filter2LRDiffNorm, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter2LRDiffNorm{n,i};
+                index = index + 1;
+            end
+            filter2LRDiffNorm{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
 filter3LRDiffNorm{1,end+1} = 'Average';
 s = size(filter3LRDiffNorm, 1);
 for n = 2:s
@@ -511,11 +646,43 @@ for n = 2:s
 end
 avg = {};
 
-%% Plot and save cumulative stats
-mkdir('Results/Access_Stats');
-mkdir('Results/LR_Differences'); 
-mkdir('Results/Normalized_LR_Differences');
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        filter3LRDiffNorm{1,end+1} = groupName;
+        s = size(filter3LRDiffNorm, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = filter3LRDiffNorm{n,i};
+                index = index + 1;
+            end
+            filter3LRDiffNorm{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
 
+%% Create the directories
+directory = 'Results/Access_Stats';
+mkdir(directory);
+directory = 'Results/LR_Differences';
+mkdir(directory); 
+directory = 'Results/Normalized_LR_Differences';
+mkdir(directory);
+
+% Process final output folder name, used to rename folder upon completion
+dateStart = dateList{2,1};
+dateEnd = dateList{end,1};
+outputFolder = ['Results_[Start_' dateStart '_End_' dateEnd ']'];
+s = size(outputFolder,2);
+outputFolderCat = '';
+for n = 1:s
+    outputFolderCat = strcat(outputFolderCat,outputFolder(1,n));
+end
+outputFolderCat = char(outputFolderCat);
+%% Plot and save cumulative stats
 %{
 timeFig = figure('position', [300, 50, 500, 400], 'visible', 'off');
 s = size(avgTotTime, 1);
@@ -538,6 +705,16 @@ fprintf(fid, 'Error processing data in file: %s \r\n', errorList);
 fclose(fid);
 
 fid = fopen('Results/Log.txt', 'w');
+fprintf(fid, 'Dates Processed: \r\n');
+fprintf(fid, '%s \r\n', dateList{2:end,1});
+fprintf(fid, '\r\n');
+fprintf(fid, 'Groups: \r\n');
+for n = 1:groupNum
+    fprintf(fid, '%s ', groupList{n,1});
+    fprintf(fid, '%i - ', groupList{n,2});
+    fprintf(fid, '%i\r\n', groupList{n,3});
+end
+fprintf(fid, '\r\n');
 fprintf(fid, 'File Read: %s \r\n', fileNameList);
 fclose(fid);
 
@@ -662,4 +839,5 @@ for n = 2:s
 end
 fclose(fid);
 
+movefile('Results', outputFolderCat);
 disp('Finished');
