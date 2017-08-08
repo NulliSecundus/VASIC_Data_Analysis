@@ -2,10 +2,10 @@
 clearvars
 
 % Turn on groups
-groupingOn = true;
+groupingOn = false;
 % Each group should be separated by semicolon
 % Group indices should be formatted 'Name',StartInt,EndInt;
-groupList = {'SNI',1,3;'Sham',4,6;'SNI',7,9};
+groupList = {'Group1',1,3;'Group2',4,6;'Group3',7,9};
 
 % Begin Filter Controls
 filter1ON = true; % show duration filter
@@ -36,6 +36,9 @@ errorIndex = 1;
 errorList = strings(1,1);
 
 dateList = {'Date'};
+weightList = cell(1);
+maxBiasListL = cell(1);
+maxBiasListR = cell(1);
 avgTotTime = cell(1);
 avgTotTimeIndex = 1;
 numAccessArray = cell(1);
@@ -108,6 +111,9 @@ for index = 1:fileNum
             filter1LRDiffNorm{1,replicateIndex} = replicateName;
             filter2LRDiffNorm{1,replicateIndex} = replicateName;
             filter3LRDiffNorm{1,replicateIndex} = replicateName;
+            weightList{1,replicateIndex} = replicateName;
+            maxBiasListL{1,replicateIndex} = replicateName;
+            maxBiasListR{1,replicateIndex} = replicateName;
         end
         
         if ~dateFound
@@ -125,6 +131,9 @@ for index = 1:fileNum
             filter2LRDiffNorm{avgTotTimeIndex,1} = date;
             filter3LRDiffNorm{avgTotTimeIndex,1} = date;
             dateList{avgTotTimeIndex,1} = date;
+            weightList{avgTotTimeIndex,1} = date;
+            maxBiasListL{avgTotTimeIndex,1} = date;
+            maxBiasListR{avgTotTimeIndex,1} = date;
         end
         
         parseData = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
@@ -137,7 +146,7 @@ for index = 1:fileNum
         left = 0;
         right = 0;
         duration = 0;
-        totalMetric = 400; % Exclude format errors from older VASIC (set to ~2xBW)
+        totalMetric = 500; % Exclude format errors from older VASIC (set to ~2xBW)
         
         % Iterate through rawData table, exclude invalid values, store in parseData
         for n = 1:s
@@ -275,12 +284,14 @@ for index = 1:fileNum
         % Calculate the animal's weight from max weight(s)
         weights = cell2mat(filterData1(2:end,5));
         weightsSort = sort(weights, 'descend');
-        if(size(weightsSort,1) >= 10)
-            weightsTen = weightsSort(1:10,:);
-            weightMetric = mean(weightsTen);
+        if(size(weightsSort,1) >= 30)
+            weightsTop = weightsSort(1:3,:);
+            weightMetric = mean(weightsTop);
         else
             weightMetric = max(weights);
         end
+        
+        weightList{avgTotTimeIndex,replicateIndex} = weightMetric;
         
         windowName = [filename '    (Weight: ' num2str(weightMetric) 'g)    (Filters Shown: ' num2str(filterNum) ')'];
         set(gcf,'name',windowName,'numbertitle','off')
@@ -297,7 +308,7 @@ for index = 1:fileNum
                 filterData2{i,3} = filterData1{n,3};
                 filterData2{i,4} = filterData1{n,4};
                 filterData2{i,5} = filterData1{n,5};
-                i = i + 1;
+                i = i + 1;   
             end
         end
 
@@ -334,6 +345,8 @@ for index = 1:fileNum
         s = size(filterData2, 1);
         
         error = weightMetric * positionError;
+        maxWeightL = 0;
+        maxWeightR = 0;
         
         i = 2;
         for n = 2:s
@@ -346,8 +359,17 @@ for index = 1:fileNum
                 filterData3{i,4} = filterData2{n,4};
                 filterData3{i,5} = filterData2{n,5};
                 i = i + 1;
+            else
+                if left < error
+                   maxWeightR = maxWeightR + 1;
+                else
+                   maxWeightL = maxWeightL + 1;
+                end
             end
         end
+        
+        maxBiasListL{avgTotTimeIndex,replicateIndex} = maxWeightL/s;
+        maxBiasListR{avgTotTimeIndex,replicateIndex} = maxWeightR/s;
         
         clear Y;
         Y = filterData3(2:end,4);
@@ -664,6 +686,93 @@ if groupingOn
     end
 end
 
+weightList{1,end+1} = 'Average';
+s = size(weightList, 1);
+for n = 2:s
+    index = size(weightList, 2);
+    for i = 2:index-1
+        avg{1,i-1} = weightList{n,i};
+    end
+    weightList{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        weightList{1,end+1} = groupName;
+        s = size(weightList, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = weightList{n,i};
+                index = index + 1;
+            end
+            weightList{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
+maxBiasListL{1,end+1} = 'Average';
+s = size(maxBiasListL, 1);
+for n = 2:s
+    index = size(maxBiasListL, 2);
+    for i = 2:index-1
+        avg{1,i-1} = maxBiasListL{n,i};
+    end
+    maxBiasListL{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        maxBiasListL{1,end+1} = groupName;
+        s = size(maxBiasListL, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = maxBiasListL{n,i};
+                index = index + 1;
+            end
+            maxBiasListL{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
+maxBiasListR{1,end+1} = 'Average';
+s = size(maxBiasListR, 1);
+for n = 2:s
+    index = size(maxBiasListR, 2);
+    for i = 2:index-1
+        avg{1,i-1} = maxBiasListR{n,i};
+    end
+    maxBiasListR{n,end} = mean(cell2mat(avg));
+end
+avg = {};
+
+if groupingOn
+    for x = 1:groupNum
+        groupName = groupList{x,1};
+        maxBiasListR{1,end+1} = groupName;
+        s = size(maxBiasListR, 1);
+        avg = {};
+        for n = 2:s
+            index = 1;
+            for i = groupList{x,2}+1:groupList{x,3}+1
+                avg{1,index} = maxBiasListR{n,i};
+                index = index + 1;
+            end
+            maxBiasListR{n,end} = mean(cell2mat(avg));
+        end
+        avg = {};
+    end
+end
+
 %% Create the directories
 directory = 'Results/Access_Stats';
 mkdir(directory);
@@ -718,6 +827,17 @@ fprintf(fid, '\r\n');
 fprintf(fid, 'File Read: %s \r\n', fileNameList);
 fclose(fid);
 
+fid = fopen('Results/Weights.csv', 'w');
+fprintf(fid, '%s,', weightList{1,1:end-1});
+fprintf(fid, '%s\n', weightList{1,end});
+s = size(weightList, 1);
+for n = 2:s
+    fprintf(fid, '%s,', weightList{n,1});
+    fprintf(fid, '%f,', weightList{n,2:end-1});
+    fprintf(fid, '%f\n', weightList{n,end});
+end
+fclose(fid);
+
 fid = fopen('Results/Access_Stats/Average_Total_Access_Time.csv', 'w');
 fprintf(fid, '%s,', avgTotTime{1,1:end-1});
 fprintf(fid, '%s\n', avgTotTime{1,end});
@@ -734,7 +854,7 @@ fprintf(fid, '%s,', numAccessArray{1,1:end-1});
 fprintf(fid, '%s\n', numAccessArray{1,end});
 s = size(numAccessArray, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', numAccessArray{n,1});
+    fprintf(fid, '%s,', numAccessArray{n,1});
     fprintf(fid, '%f,', numAccessArray{n,2:end-1});
     fprintf(fid, '%f\n', numAccessArray{n,end});
 end
@@ -745,9 +865,31 @@ fprintf(fid, '%s,', avgTimeAccess{1,1:end-1});
 fprintf(fid, '%s\n', avgTimeAccess{1,end});
 s = size(avgTimeAccess, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', avgTimeAccess{n,1});
+    fprintf(fid, '%s,', avgTimeAccess{n,1});
     fprintf(fid, '%f,', avgTimeAccess{n,2:end-1});
     fprintf(fid, '%f\n', avgTimeAccess{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/LR_Differences/Max_Weight_Bias_Incidents_Right.csv', 'w');
+fprintf(fid, '%s,', maxBiasListR{1,1:end-1});
+fprintf(fid, '%s\n', maxBiasListR{1,end});
+s = size(maxBiasListR, 1);
+for n = 2:s
+    fprintf(fid, '%s,', maxBiasListR{n,1});
+    fprintf(fid, '%f,', maxBiasListR{n,2:end-1});
+    fprintf(fid, '%f\n', maxBiasListR{n,end});
+end
+fclose(fid);
+
+fid = fopen('Results/LR_Differences/Max_Weight_Bias_Incidents_Left.csv', 'w');
+fprintf(fid, '%s,', maxBiasListL{1,1:end-1});
+fprintf(fid, '%s\n', maxBiasListL{1,end});
+s = size(maxBiasListL, 1);
+for n = 2:s
+    fprintf(fid, '%s,', maxBiasListL{n,1});
+    fprintf(fid, '%f,', maxBiasListL{n,2:end-1});
+    fprintf(fid, '%f\n', maxBiasListL{n,end});
 end
 fclose(fid);
 
@@ -756,7 +898,7 @@ fprintf(fid, '%s,', rawLRDiff{1,1:end-1});
 fprintf(fid, '%s\n', rawLRDiff{1,end});
 s = size(rawLRDiff, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', rawLRDiff{n,1});
+    fprintf(fid, '%s,', rawLRDiff{n,1});
     fprintf(fid, '%f,', rawLRDiff{n,2:end-1});
     fprintf(fid, '%f\n', rawLRDiff{n,end});
 end
@@ -767,7 +909,7 @@ fprintf(fid, '%s,', filter1LRDiff{1,1:end-1});
 fprintf(fid, '%s\n', filter1LRDiff{1,end});
 s = size(filter1LRDiff, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter1LRDiff{n,1});
+    fprintf(fid, '%s,', filter1LRDiff{n,1});
     fprintf(fid, '%f,', filter1LRDiff{n,2:end-1});
     fprintf(fid, '%f\n', filter1LRDiff{n,end});
 end
@@ -778,7 +920,7 @@ fprintf(fid, '%s,', filter2LRDiff{1,1:end-1});
 fprintf(fid, '%s\n', filter2LRDiff{1,end});
 s = size(filter2LRDiff, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter2LRDiff{n,1});
+    fprintf(fid, '%s,', filter2LRDiff{n,1});
     fprintf(fid, '%f,', filter2LRDiff{n,2:end-1});
     fprintf(fid, '%f\n', filter2LRDiff{n,end});
 end
@@ -789,7 +931,7 @@ fprintf(fid, '%s,', filter3LRDiff{1,1:end-1});
 fprintf(fid, '%s\n', filter3LRDiff{1,end});
 s = size(filter3LRDiff, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter3LRDiff{n,1});
+    fprintf(fid, '%s,', filter3LRDiff{n,1});
     fprintf(fid, '%f,', filter3LRDiff{n,2:end-1});
     fprintf(fid, '%f\n', filter3LRDiff{n,end});
 end
@@ -800,7 +942,7 @@ fprintf(fid, '%s,', rawLRDiffNorm{1,1:end-1});
 fprintf(fid, '%s\n', rawLRDiffNorm{1,end});
 s = size(rawLRDiffNorm, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', rawLRDiffNorm{n,1});
+    fprintf(fid, '%s,', rawLRDiffNorm{n,1});
     fprintf(fid, '%f,', rawLRDiffNorm{n,2:end-1});
     fprintf(fid, '%f\n', rawLRDiffNorm{n,end});
 end
@@ -811,7 +953,7 @@ fprintf(fid, '%s,', filter1LRDiffNorm{1,1:end-1});
 fprintf(fid, '%s\n', filter1LRDiffNorm{1,end});
 s = size(filter1LRDiffNorm, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter1LRDiffNorm{n,1});
+    fprintf(fid, '%s,', filter1LRDiffNorm{n,1});
     fprintf(fid, '%f,', filter1LRDiffNorm{n,2:end-1});
     fprintf(fid, '%f\n', filter1LRDiffNorm{n,end});
 end
@@ -822,7 +964,7 @@ fprintf(fid, '%s,', filter2LRDiffNorm{1,1:end-1});
 fprintf(fid, '%s\n', filter2LRDiffNorm{1,end});
 s = size(filter2LRDiffNorm, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter2LRDiffNorm{n,1});
+    fprintf(fid, '%s,', filter2LRDiffNorm{n,1});
     fprintf(fid, '%f,', filter2LRDiffNorm{n,2:end-1});
     fprintf(fid, '%f\n', filter2LRDiffNorm{n,end});
 end
@@ -833,7 +975,7 @@ fprintf(fid, '%s,', filter3LRDiffNorm{1,1:end-1});
 fprintf(fid, '%s\n', filter3LRDiffNorm{1,end});
 s = size(filter3LRDiffNorm, 1);
 for n = 2:s
-    fprintf(fid, 'Day %s,', filter3LRDiffNorm{n,1});
+    fprintf(fid, '%s,', filter3LRDiffNorm{n,1});
     fprintf(fid, '%f,', filter3LRDiffNorm{n,2:end-1});
     fprintf(fid, '%f\n', filter3LRDiffNorm{n,end});
 end
