@@ -3,20 +3,32 @@ clearvars
 
 % Turn on groups
 groupingOn = false;
+
 % Each group should be separated by semicolon
 % Group indices should be formatted 'Name',StartInt,EndInt;
 groupList = {'Group1',1,3;'Group2',4,6;'Group3',7,9};
 
-% Begin Filter Controls
-filter1ON = true; % show duration filter
-filter2ON = true; % show total weight filter
-filter3ON = true; % show minimum weight per footpad filter
-histBins = 60; % controls the number of 'bins' for each histogram
-sizeParameter = 2; % Variable determining minimum data points per epoch
-errorRate = 0.2; % error rate, allowed percentage deviation from max weight
-positionError = 0.03; % how much minimum weight required per footpad
-% End Filter Controls
+% Setup prompt
+prompt = {'Filter 1 control (true/false)','Filter 2 control (true/false)',...
+        'Filter 3 control (true/false):','Number of bins in histogram',...
+        'Minimum data points per access epoch',...
+        'Error rate - allowed percentage deviation from max weight',...
+        'Position error - minimum percentage of bodyweight required per footpad'};
+dlg_title = 'Setup';
+num_lines = 1;
+defaultans = {'true','true','true','60','2','0.2','0.03'};
+answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
+filter1ON = strcmp(answer{1},'true');
+filter2ON = strcmp(answer{2},'true'); 
+filter3ON = strcmp(answer{3},'true');
+histBins = str2double(answer{4});
+sizeParameter = str2double(answer{5});
+errorRate = str2double(answer{6});
+positionError = str2double(answer{7});
+% End setup prompt
 
+directory = uigetdir('C:\','Select directory containing raw VASIC data');
+cd(directory);
 fileListing = dir('*.csv');
 fileNum = size(fileListing,1);
 fileNameList = strings(1,1);
@@ -817,13 +829,15 @@ fid = fopen('Results/Log.txt', 'w');
 fprintf(fid, 'Dates Processed: \r\n');
 fprintf(fid, '%s \r\n', dateList{2:end,1});
 fprintf(fid, '\r\n');
-fprintf(fid, 'Groups: \r\n');
-for n = 1:groupNum
-    fprintf(fid, '%s ', groupList{n,1});
-    fprintf(fid, '%i - ', groupList{n,2});
-    fprintf(fid, '%i\r\n', groupList{n,3});
+if(groupingOn)
+    fprintf(fid, 'Groups: \r\n');
+    for n = 1:groupNum
+        fprintf(fid, '%s ', groupList{n,1});
+        fprintf(fid, '%i - ', groupList{n,2});
+        fprintf(fid, '%i\r\n', groupList{n,3});
+    end
+    fprintf(fid, '\r\n');
 end
-fprintf(fid, '\r\n');
 fprintf(fid, 'File Read: %s \r\n', fileNameList);
 fclose(fid);
 
