@@ -9,14 +9,17 @@ groupingOn = false;
 groupList = {'Group1',1,3;'Group2',4,6;'Group3',7,9};
 
 % Setup prompt
-prompt = {'Filter 1 control (true/false)','Filter 2 control (true/false)',...
-        'Filter 3 control (true/false):','Number of bins in histogram',...
+prompt = {'Display Filter 1 [Duration Filter] (true/false)',...
+        'Display Filter 2 [Error Rate Filter] (true/false)',...
+        'Display Filter 3 [Position Error Filter] (true/false):',...
+        'Number of bins in histogram',...
         'Minimum data points per access epoch',...
         'Error rate - allowed percentage deviation from max weight',...
-        'Position error - minimum percentage of bodyweight required per footpad'};
+        'Position error - minimum percentage of bodyweight required per footpad',...
+        'Enter approximate maximum bodyweight (g) of test subjects'};
 dlg_title = 'Setup';
 num_lines = 1;
-defaultans = {'true','true','true','60','2','0.2','0.03'};
+defaultans = {'true','true','true','60','2','0.25','0.03','200'};
 answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
 filter1ON = strcmp(answer{1},'true');
 filter2ON = strcmp(answer{2},'true'); 
@@ -25,6 +28,7 @@ histBins = str2double(answer{4});
 sizeParameter = str2double(answer{5});
 errorRate = str2double(answer{6});
 positionError = str2double(answer{7});
+bodyWeight = str2double(answer{8});
 % End setup prompt
 
 directory = uigetdir('C:\','Select directory containing raw VASIC data');
@@ -158,7 +162,10 @@ for index = 1:fileNum
         left = 0;
         right = 0;
         duration = 0;
-        totalMetric = 500; % Exclude format errors from older VASIC (set to ~2xBW)
+        
+        % Exclude format errors from older VASIC (set to ~2xBW)
+        totalMetric = 2 * bodyWeight;
+        % totalMetric = 500; 
         
         % Iterate through rawData table, exclude invalid values, store in parseData
         for n = 1:s
@@ -839,6 +846,10 @@ if(groupingOn)
     fprintf(fid, '\r\n');
 end
 fprintf(fid, 'File Read: %s \r\n', fileNameList);
+fclose(fid);
+
+fid = fopen('Results/Settings.txt', 'w');
+fprintf(fid, '%s\r\n', answer{:});
 fclose(fid);
 
 fid = fopen('Results/Weights.csv', 'w');
