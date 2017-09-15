@@ -1,9 +1,15 @@
 %% Setup and import raw data, parse raw data
 clearvars
 
+% Begin Filter Controls
 filter1ON = false; % show duration filter
 filter2ON = false; % show total weight filter
 filter3ON = true; % show minimum weight per footpad filter
+histBins = 60; % controls the number of 'bins' for each histogram
+sizeParameter = 2; % Variable determining minimum data points per epoch
+errorRate = 0.2; % error rate, allowed percentage deviation from max weight
+positionError = 0.1; % how much minimum weight required per footpad
+% End Filter Controls
 
 filterNum = filter1ON + filter2ON + filter3ON;
 plotNum = 1 + filterNum;
@@ -95,7 +101,7 @@ xlabel(['time (data points = ' num2str(size(Y,1)) ', Total Duration = ' num2str(
 % In the same figure, plot histogram of 'Raw Data'
 subplot(plotNum,2,plotIndex);
 plotIndex = plotIndex + 1;
-hist = histfit(Y,50);
+hist = histfit(Y,histBins);
 title('Histogram (L - R)')
 xlabel('L - R')
 ylabel('Counts')
@@ -107,7 +113,6 @@ container = [];
 ref1 = -1;
 ref2 = 0;
 i = 1;
-sizeParameter = 2; % Variable determining minimum data points per epoch
 
 % Iterate through parseData, exclude epochs with less than 2 data points
 for n = 2:s
@@ -154,7 +159,7 @@ if filter1ON
     
     subplot(plotNum,2,plotIndex);
     plotIndex = plotIndex + 1;
-    hist = histfit(Y,50);
+    hist = histfit(Y,histBins);
     title('Histogram (L - R)')
     xlabel('L - R')
     ylabel('Counts')
@@ -177,7 +182,6 @@ end
 windowName = [filename '    (Weight: ' num2str(weightMetric) 'g)    (Filters Shown: ' num2str(filterNum) ')'];
 set(gcf,'name',windowName,'numbertitle','off')
 
-errorRate = 0.2; %error rate, allowed percentage deviation from max weight
 error = weightMetric * errorRate;
 
 i = 2;
@@ -212,7 +216,7 @@ if filter2ON
     
     subplot(plotNum,2,plotIndex);
     plotIndex = plotIndex + 1;
-    hist = histfit(Y,50);
+    hist = histfit(Y,histBins);
     title('Histogram (L - R)')
     xlabel('L - R')
     ylabel('Counts')
@@ -221,8 +225,7 @@ end
 filterData3 = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
 s = size(filterData2, 1);
 
-errorRate = 0.1; %error rate, how much minimum weight per footpad
-error = weightMetric * errorRate;
+error = weightMetric * positionError;
 
 i = 2;
 for n = 2:s
@@ -238,26 +241,38 @@ for n = 2:s
     end
 end
 
+Y = filterData3(2:end,4);
+Y = cell2mat(Y);
+Mean = mean(Y);
+Stdev = std(Y);
+
+
+
 % Show plot and histogram if desired
 if filter3ON
-    Y = filterData3(2:end,4);
-    Y = cell2mat(Y);
-    Mean = mean(Y);
-    Stdev = std(Y);
-    
     subplot(plotNum,2,plotIndex);
     plotIndex = plotIndex + 1;
     plot(Y)
     values = ['Mean: ' num2str(Mean) ', Stdev: ' num2str(Stdev)];
-    title({['L - R plot filtered: minimum weight (' num2str(errorRate) '), total weight (' num2str(errorRate) '), duration (' num2str(sizeParameter) ')'];
+    title({['L - R plot filtered: minimum weight (' num2str(positionError) '), total weight (' num2str(errorRate) '), duration (' num2str(sizeParameter) ')'];
         values});
     ylabel(filterData3(1,4));
     xlabel(['time (data points = ' num2str(size(Y,1)) ')']);
     
     subplot(plotNum,2,plotIndex);
     plotIndex = plotIndex + 1;
-    hist = histfit(Y,50);
+    hist = histfit(Y,histBins);
     title('Histogram (L - R)')
     xlabel('L - R')
     ylabel('Counts')
 end
+
+%% Save Figure
+%{
+folderName = filename(1:end-4);
+dirPath = ['Results/' folderName];
+mkdir(dirPath);
+figureName = [folderName '_Figure.fig'];
+savePath = ['Results/' folderName '/' figureName];
+savefig(savePath);
+%}
