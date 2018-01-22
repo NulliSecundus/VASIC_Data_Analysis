@@ -1,3 +1,26 @@
+% Copyright (C) (2018) Yang Laboratory, University of Wisconsin - Madison
+% 
+% Distributed under the GNU Public License (GPL)
+% See the file 'COPYING' for details
+% 
+% Author: Brendan Drackley
+% Email: brendandrackley@gmail.com
+% 
+% Please send bug reports to: jyang75@wisc.edu
+%
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 %% Setup and parameters
 clearvars
 
@@ -31,6 +54,7 @@ positionError = str2double(answer{7});
 bodyWeight = str2double(answer{8});
 % End setup prompt
 
+% Prompt directory selection
 directory = uigetdir('C:\','Select directory containing raw VASIC data');
 cd(directory);
 fileListing = dir('*.csv');
@@ -39,11 +63,14 @@ fileNameList = strings(1,1);
 fileNameListIndex = 1;
 dirPath = 'Results/Figures/';
 mkdir(dirPath);
+% End directory selection
 
+% Set filtering and plot info
 filterNum = filter1ON + filter2ON + filter3ON;
 plotNum = 1 + filterNum;
 plotHeight = plotNum * 230;
 
+% Create var and structures
 date = '';
 replicateName = '';
 replicateIndex = 1;
@@ -81,8 +108,9 @@ for index = 1:fileNum
            splitFilename = strsplit(filename); 
         end
         
+        % Automatic detection of file format
         opts = detectImportOptions(filename);
-        opts.DataLine = 2; % data begins on line 2 (set according to file format)
+        opts.DataLine = 2; % data begins on line 2 
         opts.VariableNames(1) = {'Time'};
         opts.VariableNames(2) = {'break1'};
         opts.VariableNames(3) = {'Start_Stop'};
@@ -98,8 +126,6 @@ for index = 1:fileNum
         disp(dispStr);
         rawData = readtable(filename, opts);
         
-        % Check raw data for previous read
-        
         curDate = string(splitFilename{1,1});
         replicateName = string(splitFilename{1,2});
         avgTotTimeRepSize = size(avgTotTime, 2);
@@ -107,6 +133,7 @@ for index = 1:fileNum
         replicateFound = false;
         dateFound = strcmp(curDate, date);
         
+        % Check for the current replicate
         for attrs = 2:avgTotTimeRepSize
             if strcmp(string(avgTotTime{1,attrs}),replicateName)
                 replicateFound = true;
@@ -114,6 +141,8 @@ for index = 1:fileNum
             end
         end
         
+        % If the replicate was not found
+        % Write replicate name into output structures
         if ~replicateFound
             replicateIndex = replicateIndex + 1;
             avgTotTime{1,replicateIndex} = replicateName;
@@ -132,6 +161,8 @@ for index = 1:fileNum
             maxBiasListR{1,replicateIndex} = replicateName;
         end
         
+        % If the current date was not found
+        % Write date into output structures
         if ~dateFound
             date = curDate;
             avgTotTimeIndex = avgTotTimeIndex + 1;
@@ -152,6 +183,7 @@ for index = 1:fileNum
             maxBiasListR{avgTotTimeIndex,1} = date;
         end
         
+        %Init parseData structure with header info
         parseData = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
         
         s = size(rawData, 1);
@@ -163,7 +195,7 @@ for index = 1:fileNum
         right = 0;
         duration = 0;
         
-        % Exclude format errors from older VASIC (set to ~1.2xBW)
+        % Exclude format errors from older VASIC (set to ~1.25xBW)
         totalMetric = 1.25 * bodyWeight;
         
         % Iterate through rawData table, exclude invalid values, store in parseData
@@ -243,7 +275,8 @@ for index = 1:fileNum
         ref2 = 0;
         i = 1;
         
-        % Iterate through parseData, exclude epochs with less than 2 data points
+        % Iterate through parseData
+        % Exclude epochs with less than 'sizeParameter' data points
         for n = 2:s
             ref2 = parseData{n,1};
             if((ref2-ref1) > 0.5)
@@ -813,22 +846,6 @@ for n = 1:s
     outputFolderCat = strcat(outputFolderCat,outputFolder(1,n));
 end
 outputFolderCat = char(outputFolderCat);
-%% Plot and save cumulative stats
-%{
-timeFig = figure('position', [300, 50, 500, 400], 'visible', 'off');
-s = size(avgTotTime, 1);
-clear Y;
-for n = 2:s
-  Y(n-1,1) = avgTotTime{n,end};
-end
-plot(Y)
-title('Average Total Access Time');
-xlabel('Date');
-ylabel('Seconds');
-axis([0 inf 0 inf]);
-saveas(timeFig, 'Results/Access_Stats/Average_Total_Access_Time_Figure.jpg');
-close;
-%}
 
 %% Write out Error-Log and stats
 fid = fopen('Results/Errors.txt', 'w');
