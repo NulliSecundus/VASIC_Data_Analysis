@@ -163,9 +163,8 @@ for index = 1:fileNum
         right = 0;
         duration = 0;
         
-        % Exclude format errors from older VASIC (set to ~2xBW)
-        totalMetric = 2 * bodyWeight;
-        % totalMetric = 500; 
+        % Exclude format errors from older VASIC (set to ~1.2xBW)
+        totalMetric = 1.25 * bodyWeight;
         
         % Iterate through rawData table, exclude invalid values, store in parseData
         for n = 1:s
@@ -234,6 +233,7 @@ for index = 1:fileNum
         title('Histogram (L - R)')
         xlabel('L - R')
         ylabel('Counts')
+        xlim([-(totalMetric) totalMetric])
         
         %% Filter data by duration
         filterData1 = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
@@ -294,6 +294,7 @@ for index = 1:fileNum
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
+            xlim([-(totalMetric) totalMetric])
         end
         
         %% Filter data that is significantly off from total weight
@@ -358,6 +359,7 @@ for index = 1:fileNum
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
+            xlim([-(totalMetric) totalMetric])
         end
         %% Filter out data that is likely bad positioning (ie. too little weight on one footpad)
         filterData3 = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
@@ -415,6 +417,7 @@ for index = 1:fileNum
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
+            xlim([-(totalMetric) totalMetric])
         end
         
         %% Save Figure
