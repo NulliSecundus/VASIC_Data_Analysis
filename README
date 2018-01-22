@@ -1,0 +1,68 @@
+VASIC Data Analysis
+
+Copyright (C) (2018) Yang Laboratory, University of Wisconsin - Madison
+ 
+Distributed under the GNU Public License (GPL)
+See the file 'COPYING' for details
+
+Author: Brendan Drackley
+Email: brendandrackley@gmail.com
+ 
+Please send bug reports to: jyang75@wisc.edu
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+-------------------------------------------------------------------------------
+
+VASIC Data Analysis is a data processing script utilizing the MATLAB 
+environment for processing and visualizing data acquired from a VASIC device. 
+This program reads all properly formatted *.csv files from a single directory
+and applies various filters to the data before generating a final output 
+folder containing a collection of descriptive statistics. 
+
+There are 3 levels of filtering applied to the data in sequence and controlled 
+by 3 input parameters the user is prompted for at program startup: 
+1. 	Filtering readings without a minimum of X (default 2) data points 
+2. 	Filtering data points where the summation of both platforms is outside of 
+	± X% (default 25%) of the calculated bodyweight
+3. 	Filtering weight readings where the weight measurement on
+	either platform is <X% (default 3%) of the calculated bodyweight 
+
+The final output folder name is generated from the dates of the files processed
+and is formatted as follows: Results_[Start_<STARTDATE>_End_<ENDDATE>] 
+with <STARTDATE> and <ENDDATE> being replaced by the appropriate start and end 
+dates of the files processed. 
+
+The final output folder top level structure and descriptions are as follows:
+1. 	Access_Stats: directory containing summary statistics of the rodents' 
+	average access times and number of access events
+2.	Figures: directory containing images depicting individual data files' time
+	course summaries and weight bias histograms
+3.	LR_Differences: a directory containing absolute weight bias summary 
+	statistics for raw data and each level of filtering in sequence 
+	(ie. Filter3 data has been filtered by Filter1, Filter2, and Filter3).
+	Also contains summary statistic files for the number of incidents where 
+	Filter3 has eliminated data points (total number of data points filtered). 
+4.	Normalized_LR_Differences: a directory containing weight bias summary 
+	statistics normalized to the rodents' calculated bodyweight for raw data 
+	and each level of filtering in sequence 
+	(ie. Filter3 data has been filtered	by Filter1, Filter2, and Filter3).
+5.	Errors.txt: a text file listing any files in which an error occurred 
+	during data processing. 
+6.	Log.txt: a text file listing a summary of the dates processed and the 
+	files read. 
+7.	Settings.txt: a text file listing the input parameters used to generate 
+	the processed data files. 
+8.	Weights.csv: a *.csv file listing the calculated bodyweight of each 
+	rodent on each day. 
