@@ -22,14 +22,19 @@
 % along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 %% Setup and parameters
-clearvars
+clear;
 
-% Turn on groups
-groupingOn = false;
+% 'true' enables debug messages
+debug = false;
 
-% Each group should be separated by semicolon
-% Group indices should be formatted 'Name',StartInt,EndInt;
-groupList = {'Group1',1,3;'Group2',4,6;'Group3',7,9};
+% True if the environment is Octave.
+isOctave = (exist ("OCTAVE_VERSION", "builtin") > 0);
+
+if(isOctave)
+  % Octave setup
+  pkg load io;
+  pkg load statistics;
+end
 
 % Setup prompt
 prompt = {'Display Filter 1 [Duration Filter] (true/false)',...
@@ -59,10 +64,15 @@ directory = uigetdir('C:\','Select directory containing raw VASIC data');
 cd(directory);
 fileListing = dir('*.csv');
 fileNum = size(fileListing,1);
-fileNameList = strings(1,1);
+if(isOctave)
+  fileNameList = cell(fileNum,1);
+else
+  fileNameList = "";
+end
 fileNameListIndex = 1;
 dirPath = 'Results/Figures/';
 mkdir(dirPath);
+if(debug) disp("Results directory created"); end
 % End directory selection
 
 % Set filtering and plot info
@@ -76,7 +86,11 @@ replicateName = '';
 replicateIndex = 1;
 
 errorIndex = 1;
-errorList = strings(1,1);
+if(isOctave)
+  errorList = cell(fileNum,1);
+else
+  errorList = "";
+end
 
 dateList = {'Date'};
 weightList = cell(1);
@@ -95,50 +109,75 @@ filter1LRDiffNorm = cell(1);
 filter2LRDiffNorm = cell(1);
 filter3LRDiffNorm = cell(1);
 
-groupNum = size(groupList,1);
-
 %% Main loop - file processing
 for index = 1:fileNum
     try
         %% Prepare file import and parse raw data
         filename = fileListing(index).name; % get .csv file
         splitFilename = strsplit(filename, '_');
+        if(debug) disp(["Processing file " filename]); end
         
         if size(splitFilename, 2) <= 1
            splitFilename = strsplit(filename); 
         end
         
-        % Automatic detection of file format
-        opts = detectImportOptions(filename);
-        opts.DataLine = 2; % data begins on line 2 
-        opts.VariableNames(1) = {'Time'};
-        opts.VariableNames(2) = {'break1'};
-        opts.VariableNames(3) = {'Start_Stop'};
-        opts.VariableNames(4) = {'TimeStamp'};
-        opts.VariableNames(5) = {'break2'};
-        opts.VariableNames(6) = {'Left'};
-        opts.VariableNames(7) = {'break3'};
-        opts.VariableNames(8) = {'Right'};
-        opts.VariableNames(9) = {'Duration'};
-        opts.Delimiter = ',';
-        opts = setvartype(opts, {'Left','Right','Duration'}, 'double');
-        dispStr = ['Loading ' filename ' (' num2str(index) ')'];
-        disp(dispStr);
-        rawData = readtable(filename, opts);
+        if(isOctave)
+          % Octave version
+          dispStr = ['Loading ' filename ' (' num2str(index) ')'];
+          disp(dispStr);
+          rawData = csv2cell(filename);
+        else
+          % Matlab version
+          % Automatic detection of file format
+          opts = detectImportOptions(filename);
+          opts.DataLine = 2; % data begins on line 2 
+          opts.VariableNames(1) = {'Time'};
+          opts.VariableNames(2) = {'break1'};
+          opts.VariableNames(3) = {'Start_Stop'};
+          opts.VariableNames(4) = {'TimeStamp'};
+          opts.VariableNames(5) = {'break2'};
+          opts.VariableNames(6) = {'Left'};
+          opts.VariableNames(7) = {'break3'};
+          opts.VariableNames(8) = {'Right'};
+          opts.VariableNames(9) = {'Duration'};
+          opts.Delimiter = ',';
+          opts = setvartype(opts, {'Left','Right','Duration'}, 'double');
+          dispStr = ['Loading ' filename ' (' num2str(index) ')'];
+          disp(dispStr);
+          rawData = readtable(filename, opts);
+        end
         
-        curDate = string(splitFilename{1,1});
-        replicateName = string(splitFilename{1,2});
-        avgTotTimeRepSize = size(avgTotTime, 2);
+        if(debug) disp("Raw data read"); end
         
-        replicateFound = false;
-        dateFound = strcmp(curDate, date);
+        if(isOctave)
+          curDate = splitFilename{1,1};
+          replicateName = splitFilename{1,2};
+          avgTotTimeRepSize = size(avgTotTime, 2);
+          replicateFound = false;
+          dateFound = strcmp(curDate, date);
+        else
+          curDate = string(splitFilename{1,1});
+          replicateName = string(splitFilename{1,2});
+          avgTotTimeRepSize = size(avgTotTime, 2);
+          replicateFound = false;
+          dateFound = strcmp(curDate, date);
+        end
         
         % Check for the current replicate
-        for attrs = 2:avgTotTimeRepSize
-            if strcmp(string(avgTotTime{1,attrs}),replicateName)
-                replicateFound = true;
-                replicateIndex = attrs;
-            end
+        if(isOctave)
+          for attrs = 2:avgTotTimeRepSize
+              if strcmp(avgTotTime{1,attrs},replicateName)
+                  replicateFound = true;
+                  replicateIndex = attrs;
+              end
+          end
+        else
+          for attrs = 2:avgTotTimeRepSize
+              if strcmp(string(avgTotTime{1,attrs}),replicateName)
+                  replicateFound = true;
+                  replicateIndex = attrs;
+              end
+          end
         end
         
         % If the replicate was not found
@@ -199,21 +238,37 @@ for index = 1:fileNum
         totalMetric = 1.25 * bodyWeight;
         
         % Iterate through rawData table, exclude invalid values, store in parseData
-        for n = 1:s
+        if(isOctave)
+          startindex = 2;
+        else
+          startindex = 1;
+        end
+        
+        for n = startindex:s
+          try
             left = rawData{n,6};
             right = rawData{n,8};
-            total = left + right;
             duration = rawData{n,9};
-            if((left>0) && (right>0) && (duration>=0))
-                if((totalMetric - total) > 0)
-                    parseData{i,1} = duration;
-                    parseData{i,2} = left;
-                    parseData{i,3} = right;
-                    parseData{i,4} = left - right;
-                    parseData{i,5} = left + right;
-                    i = i + 1;
-                end
+            if(~(strcmp(class(left), "double") && strcmp(class(right), "double") && strcmp(class(duration), "double")))
+              continue;
             end
+            total = left + right;
+            if((left>0) && (right>0) && (duration>=0))
+              if((totalMetric - total) > 0)
+                  parseData{i,1} = duration;
+                  parseData{i,2} = left;
+                  parseData{i,3} = right;
+                  parseData{i,4} = left - right;
+                  parseData{i,5} = left + right;
+                  i = i + 1;
+              end
+            end
+           catch exception
+            if(debug) 
+              disp(["Error parsing raw data from " filename]);
+              disp(exception);
+            end
+           end
         end
         
         % Build an array 'avgDur' of duration per valid epoch (sensor breaks)
@@ -231,24 +286,58 @@ for index = 1:fileNum
                 prevDur = curDur;
             end
         end
+        if(debug) disp("Average duration array populated"); end
         
         numAccess = size(avgDur, 1); % Total number of access epochs
         numAccessArray{avgTotTimeIndex,replicateIndex} = numAccess;
         
         %% Plot L - R diff of extracted data (raw)
+        if(debug) disp("Preparing data for plotting"); end
         clear Y;
         Y = parseData(2:end,4); % Extract L-R column
-        Y = cell2mat(Y);
+        if(debug) disp("Extracted raw L-R data"); end
+        
+        if(isOctave)
+          s = size(Y, 1);
+          Ytemp = zeros(s,1);
+          for n = 1:s
+            try
+              Ytemp(n,1) = Y{n,1};
+             catch exception
+              if(debug) 
+                disp(["Error for " num2str(Y{n,1}) " at index " num2str(n)]); 
+                disp(exception); 
+              end
+             end
+          end
+          clear Y;
+          Y = Ytemp;
+        else
+          Y = cell2mat(Y);
+        end
+        
+        if(debug) disp("Raw L-R data formatted"); end
         Mean = mean(Y); % L-R mean
         rawLRDiff{avgTotTimeIndex,replicateIndex} = Mean;
+        if(debug) disp("Mean calculated and saved"); end
         Stdev = std(Y); % L-R Stdev
         AvgDur = mean(cell2mat(avgDur),1); % Average epoch duration
         avgTimeAccess{avgTotTimeIndex,replicateIndex} = AvgDur;
+        if(debug) disp("Average duration calculated and saved"); end
         TotDur = sum(cell2mat(avgDur),1); % Cumulative valid data point duration
         avgTotTime{avgTotTimeIndex,replicateIndex} = TotDur;
+        if(debug) disp("Total duration calculated and saved"); end
         
         % Plot 'Raw Data' L-R difference over time
-        fig = figure('position', [300, 50, 1500, plotHeight], 'visible', 'off'); % Create new figure with specified size
+        if(isOctave)
+          % Create new figure with specified size
+          fig = figure("position", [300, 50, 1500, plotHeight]); 
+        else
+          % Create new figure with specified size
+          fig = figure('position', [300, 50, 1500, plotHeight], 'visible', 'off'); 
+        end
+        if(debug) disp("Figure created"); end
+        
         plotIndex = 1;
         subplot(plotNum,2,plotIndex);
         plotIndex = plotIndex + 1;
@@ -261,11 +350,19 @@ for index = 1:fileNum
         % In the same figure, plot histogram of 'Raw Data'
         subplot(plotNum,2,plotIndex);
         plotIndex = plotIndex + 1;
-        hist = histfit(Y,histBins);
+        
+        if(isOctave)
+          histfit(Y,histBins);
+        else
+          hist = histfit(Y,histBins);
+        end
+        
         title('Histogram (L - R)')
         xlabel('L - R')
         ylabel('Counts')
         xlim([-(totalMetric) totalMetric])
+        
+        if(debug) disp("Raw data plotted"); end
         
         %% Filter data by duration
         filterData1 = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
@@ -305,7 +402,26 @@ for index = 1:fileNum
         
         clear Y;
         Y = filterData1(2:end,4);
-        Y = cell2mat(Y);
+        
+        if(isOctave)
+          s = size(Y, 1);
+          Ytemp = zeros(s,1);
+          for n = 1:s
+            try
+              Ytemp(n,1) = Y{n,1};
+             catch exception
+              if(debug) 
+                disp(["Error for " num2str(Y{n,1}) " at index " num2str(n)]); 
+                disp(exception); 
+              end
+             end
+          end
+          clear Y;
+          Y = Ytemp;
+        else
+          Y = cell2mat(Y);
+        end
+        
         Mean = mean(Y);
         filter1LRDiff{avgTotTimeIndex,replicateIndex} = Mean;
         Stdev = std(Y);
@@ -323,11 +439,18 @@ for index = 1:fileNum
             
             subplot(plotNum,2,plotIndex);
             plotIndex = plotIndex + 1;
-            hist = histfit(Y,histBins);
+            
+            if(isOctave)
+              histfit(Y,histBins);
+            else
+              hist = histfit(Y,histBins);
+            end
+            
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
             xlim([-(totalMetric) totalMetric])
+            if(debug) disp("Filter1 data plotted"); end
         end
         
         %% Filter data that is significantly off from total weight
@@ -367,7 +490,26 @@ for index = 1:fileNum
 
         clear Y;
         Y = filterData2(2:end,4);
-        Y = cell2mat(Y);
+        
+        if(isOctave)
+          s = size(Y, 1);
+          Ytemp = zeros(s,1);
+          for n = 1:s
+            try
+              Ytemp(n,1) = Y{n,1};
+             catch exception
+              if(debug) 
+                disp(["Error for " num2str(Y{n,1}) " at index " num2str(n)]); 
+                disp(exception); 
+              end
+             end
+          end
+          clear Y;
+          Y = Ytemp;
+        else
+          Y = cell2mat(Y);
+        end
+        
         Mean = mean(Y);
         filter2LRDiff{avgTotTimeIndex,replicateIndex} = Mean;
         filter2LRDiffNorm{avgTotTimeIndex,replicateIndex} = (Mean / weightMetric);
@@ -388,12 +530,20 @@ for index = 1:fileNum
             
             subplot(plotNum,2,plotIndex);
             plotIndex = plotIndex + 1;
-            hist = histfit(Y,histBins);
+            
+            if(isOctave)
+              histfit(Y,histBins);
+            else
+              hist = histfit(Y,histBins);
+            end
+            
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
             xlim([-(totalMetric) totalMetric])
+            if(debug) disp("Filter2 data plotted"); end
         end
+        
         %% Filter out data that is likely bad positioning (ie. too little weight on one footpad)
         filterData3 = {'tRef', 'Left', 'Right', 'L - R', 'L + R'};
         s = size(filterData2, 1);
@@ -427,7 +577,26 @@ for index = 1:fileNum
         
         clear Y;
         Y = filterData3(2:end,4);
-        Y = cell2mat(Y);
+        
+        if(isOctave)
+          s = size(Y, 1);
+          Ytemp = zeros(s,1);
+          for n = 1:s
+            try
+              Ytemp(n,1) = Y{n,1};
+             catch exception
+              if(debug) 
+                disp(["Error for " num2str(Y{n,1}) " at index " num2str(n)]); 
+                disp(exception); 
+              end
+             end
+          end
+          clear Y;
+          Y = Ytemp;
+        else
+          Y = cell2mat(Y);
+        end
+        
         Mean = mean(Y);
         filter3LRDiff{avgTotTimeIndex,replicateIndex} = Mean;
         filter3LRDiffNorm{avgTotTimeIndex,replicateIndex} = (Mean / weightMetric);
@@ -446,11 +615,18 @@ for index = 1:fileNum
             
             subplot(plotNum,2,plotIndex);
             plotIndex = plotIndex + 1;
-            hist = histfit(Y,histBins);
+            
+            if(isOctave)
+              histfit(Y,histBins);
+            else
+              hist = histfit(Y,histBins);
+            end
+            
             title('Histogram (L - R)')
             xlabel('L - R')
             ylabel('Counts')
             xlim([-(totalMetric) totalMetric])
+            if(debug) disp("Filter3 data plotted"); end
         end
         
         %% Save Figure
@@ -460,22 +636,42 @@ for index = 1:fileNum
         disp(dispStr);
         savePath = ['Results/Figures/' figureName];
         %savefig(savePath);
-        saveas(fig,[savePath '.jpg']);
+        if(isOctave)
+          set(fig, 'PaperPositionMode', 'auto');
+          savePath = ["Results/Figures/" figureName ".png"];
+          print(fig, savePath, "-r1000");
+          % print -dpng -color "-S500,500" savePath
+          % print(fig, [savePath ".jpg"]);
+        else
+          saveas(fig,[savePath '.jpg']);
+        end
+        if(debug) disp("Figure saved"); end
         close;
         
         %% Save filename for file-read log
         fileNameList(fileNameListIndex,1) = [filename ' (' num2str(index) ')'];
         fileNameListIndex = fileNameListIndex + 1;
         
-    catch
+    catch exception
         close;
+        disp(exception);
         disp(['Error processing data in file ' filename]);
-        errorList(errorIndex,1) = [filename ' (' num2str(index) ')'];
-        errorIndex = errorIndex + 1;
+        
+        if(isOctave)
+          % Octave version
+          errorList(errorIndex,1) = [filename " (" num2str(index) ")"]
+          errorIndex = errorIndex + 1;
+        else
+          % Matlab version
+          errorList(errorIndex,1) = [filename ' (' num2str(index) ')'];
+          errorIndex = errorIndex + 1;
+        end
     end
 end
 
 %% Calculate final stats
+try
+
 avgTotTime{1,end+1} = 'Average';
 s = size(avgTotTime, 1);
 for n = 2:s
@@ -520,24 +716,6 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        rawLRDiff{1,end+1} = groupName;
-        s = size(rawLRDiff, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = rawLRDiff{n,i};
-                index = index + 1;
-            end
-            rawLRDiff{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
-
 filter1LRDiff{1,end+1} = 'Average';
 s = size(filter1LRDiff, 1);
 for n = 2:s
@@ -548,24 +726,6 @@ for n = 2:s
     filter1LRDiff{n,end} = mean(cell2mat(avg));
 end
 avg = {};
-
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter1LRDiff{1,end+1} = groupName;
-        s = size(filter1LRDiff, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter1LRDiff{n,i};
-                index = index + 1;
-            end
-            filter1LRDiff{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
 
 filter2LRDiff{1,end+1} = 'Average';
 s = size(filter2LRDiff, 1);
@@ -578,24 +738,6 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter2LRDiff{1,end+1} = groupName;
-        s = size(filter2LRDiff, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter2LRDiff{n,i};
-                index = index + 1;
-            end
-            filter2LRDiff{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
-
 filter3LRDiff{1,end+1} = 'Average';
 s = size(filter3LRDiff, 1);
 for n = 2:s
@@ -606,24 +748,6 @@ for n = 2:s
     filter3LRDiff{n,end} = mean(cell2mat(avg));
 end
 avg = {};
-
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter3LRDiff{1,end+1} = groupName;
-        s = size(filter3LRDiff, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter3LRDiff{n,i};
-                index = index + 1;
-            end
-            filter3LRDiff{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
 
 rawLRDiffNorm{1,end+1} = 'Average';
 s = size(rawLRDiffNorm, 1);
@@ -636,24 +760,6 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        rawLRDiffNorm{1,end+1} = groupName;
-        s = size(rawLRDiffNorm, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = rawLRDiffNorm{n,i};
-                index = index + 1;
-            end
-            rawLRDiffNorm{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
-
 filter1LRDiffNorm{1,end+1} = 'Average';
 s = size(filter1LRDiffNorm, 1);
 for n = 2:s
@@ -664,24 +770,6 @@ for n = 2:s
     filter1LRDiffNorm{n,end} = mean(cell2mat(avg));
 end
 avg = {};
-
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter1LRDiffNorm{1,end+1} = groupName;
-        s = size(filter1LRDiffNorm, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter1LRDiffNorm{n,i};
-                index = index + 1;
-            end
-            filter1LRDiffNorm{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
 
 filter2LRDiffNorm{1,end+1} = 'Average';
 s = size(filter2LRDiffNorm, 1);
@@ -694,24 +782,6 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter2LRDiffNorm{1,end+1} = groupName;
-        s = size(filter2LRDiffNorm, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter2LRDiffNorm{n,i};
-                index = index + 1;
-            end
-            filter2LRDiffNorm{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
-
 filter3LRDiffNorm{1,end+1} = 'Average';
 s = size(filter3LRDiffNorm, 1);
 for n = 2:s
@@ -722,24 +792,6 @@ for n = 2:s
     filter3LRDiffNorm{n,end} = mean(cell2mat(avg));
 end
 avg = {};
-
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        filter3LRDiffNorm{1,end+1} = groupName;
-        s = size(filter3LRDiffNorm, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = filter3LRDiffNorm{n,i};
-                index = index + 1;
-            end
-            filter3LRDiffNorm{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
 
 weightList{1,end+1} = 'Average';
 s = size(weightList, 1);
@@ -752,24 +804,6 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        weightList{1,end+1} = groupName;
-        s = size(weightList, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = weightList{n,i};
-                index = index + 1;
-            end
-            weightList{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
-
 maxBiasListL{1,end+1} = 'Average';
 s = size(maxBiasListL, 1);
 for n = 2:s
@@ -780,24 +814,6 @@ for n = 2:s
     maxBiasListL{n,end} = mean(cell2mat(avg));
 end
 avg = {};
-
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        maxBiasListL{1,end+1} = groupName;
-        s = size(maxBiasListL, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = maxBiasListL{n,i};
-                index = index + 1;
-            end
-            maxBiasListL{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
-end
 
 maxBiasListR{1,end+1} = 'Average';
 s = size(maxBiasListR, 1);
@@ -810,22 +826,8 @@ for n = 2:s
 end
 avg = {};
 
-if groupingOn
-    for x = 1:groupNum
-        groupName = groupList{x,1};
-        maxBiasListR{1,end+1} = groupName;
-        s = size(maxBiasListR, 1);
-        avg = {};
-        for n = 2:s
-            index = 1;
-            for i = groupList{x,2}+1:groupList{x,3}+1
-                avg{1,index} = maxBiasListR{n,i};
-                index = index + 1;
-            end
-            maxBiasListR{n,end} = mean(cell2mat(avg));
-        end
-        avg = {};
-    end
+catch
+  disp("Error calculating statistics");
 end
 
 %% Create the directories
@@ -849,23 +851,30 @@ outputFolderCat = char(outputFolderCat);
 
 %% Write out Error-Log and stats
 fid = fopen('Results/Errors.txt', 'w');
-fprintf(fid, 'Error processing data in file: %s \r\n', errorList);
+if(isOctave)
+  s = size(errorList, 1);
+  for n = 1:s
+      fprintf(fid, 'Error processing data in file: %s \r\n', errorList{n,1});
+  end
+else
+  fprintf(fid, 'Error processing data in file: %s \r\n', errorList);
+end
 fclose(fid);
 
 fid = fopen('Results/Log.txt', 'w');
 fprintf(fid, 'Dates Processed: \r\n');
 fprintf(fid, '%s \r\n', dateList{2:end,1});
 fprintf(fid, '\r\n');
-if(groupingOn)
-    fprintf(fid, 'Groups: \r\n');
-    for n = 1:groupNum
-        fprintf(fid, '%s ', groupList{n,1});
-        fprintf(fid, '%i - ', groupList{n,2});
-        fprintf(fid, '%i\r\n', groupList{n,3});
-    end
-    fprintf(fid, '\r\n');
+
+if(isOctave)
+  s = size(fileNameList, 1);
+  for n = 1:s
+      fprintf(fid, 'File Read: %s \r\n', fileNameList{n,1});
+  end
+else
+  fprintf(fid, 'File Read: %s \r\n', fileNameList);
 end
-fprintf(fid, 'File Read: %s \r\n', fileNameList);
+
 fclose(fid);
 
 fid = fopen('Results/Settings.txt', 'w');
